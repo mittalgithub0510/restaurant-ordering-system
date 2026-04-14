@@ -1,0 +1,13 @@
+[Wed Apr  8 22:18:20 2026] PHP 8.2.12 Development Server (http://127.0.0.1:8080) started
+[Wed Apr  8 22:18:33 2026] 127.0.0.1:65119 Accepted
+[Wed Apr  8 22:22:46 2026] PHP Warning:  Uncaught PDOException: SQLSTATE[HY000]: General error: 2006 MySQL server has gone away in D:\web dev\Restaurant Management System\restaurant-system\backend\models\MenuItem.php:17
+Stack trace:
+#0 D:\web dev\Restaurant Management System\restaurant-system\backend\models\MenuItem.php(17): PDO->query('SELECT m.*, c.n...')
+#1 D:\web dev\Restaurant Management System\restaurant-system\backend\controllers\HomeController.php(14): App\Models\MenuItem::allWithCategory(true)
+#2 D:\web dev\Restaurant Management System\restaurant-system\index.php(20): App\Controllers\HomeController->index()
+#3 D:\web dev\Restaurant Management System\restaurant-system\router.php(16): require('D:\\web dev\\Rest...')
+#4 {main}
+  thrown in D:\web dev\Restaurant Management System\restaurant-system\backend\models\MenuItem.php on line 17
+[Wed Apr  8 22:22:46 2026] PHP Fatal error:  Maximum execution time of 60 seconds exceeded in D:\web dev\Restaurant Management System\restaurant-system\backend\controllers\HomeController.php on line 14
+[Wed Apr  8 22:22:46 2026] 127.0.0.1:65119 Closing
+^C

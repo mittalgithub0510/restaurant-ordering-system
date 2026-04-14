@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Smart Restaurant Management System (Dine-in + Delivery)
 
 Production-style PHP backend (MVC-style modules), responsive POS frontend, and MySQL schema for **XAMPP** on Windows.
@@ -100,3 +101,7 @@ restaurant-system/
 - Use HTTPS in production.
 - Change demo passwords and restrict database access.
 - Validate file uploads (already limited by MIME/size in `MenuController::apiUpload`).
+=======
+# restaurant-ordering-system
+A web-based restaurant ordering system with order management and backend integration using PHP and MySQL.
+>>>>>>> 1f25839cc3b2e4857b47805d805622bf761a50c2

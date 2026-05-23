@@ -21,6 +21,9 @@
     var orderType = document.getElementById('orderType');
     var wrapTable = document.getElementById('wrapTable');
     var tableButtons = document.querySelectorAll('.table-btn');
+    var btnPlace = document.getElementById('btnPlace');
+    var selectedTableInput = document.getElementById('selectedTable');
+    var tableError = document.getElementById('tableError');
 
     // Modal Controls
     var checkoutModal = document.getElementById('checkoutModal');
@@ -33,13 +36,19 @@
         document.getElementById('step' + s).style.display = 'block';
     }
 
-    if (tableButtons) {
+    if (tableButtons && tableButtons.length > 0) {
         tableButtons.forEach(function (btn) {
             btn.addEventListener('click', function () {
-                if (btn.getAttribute('data-status') !== 'available') return;
+                var status = btn.getAttribute('data-status');
+                // Block occupied tables (data-status="occupied")
+                // Allow: "None" button (no data-status), available tables (data-status="available")
+                if (status === 'occupied') return;
                 tableButtons.forEach(function (b) { b.classList.remove('selected'); });
                 btn.classList.add('selected');
-                selectedTableInput.value = btn.getAttribute('data-id');
+                var tableVal = btn.getAttribute('data-id') || '0';
+                if (selectedTableInput) {
+                    selectedTableInput.value = tableVal;
+                }
                 if (tableError) tableError.classList.remove('is-visible');
             });
         });
@@ -119,13 +128,27 @@
             var card = document.createElement('article');
             card.className = 'menu-card';
             var imgSrc = window.SRMS.resolveMenuImageUrl ? window.SRMS.resolveMenuImageUrl(it) : '';
-            var img = document.createElement(imgSrc ? 'img' : 'div');
-            if (imgSrc) {
-                img.src = imgSrc;
+            var img;
+            var hasImage = !!imgSrc;
+            if (hasImage) {
+                img = document.createElement('img');
                 img.alt = String(it.name || 'Dish photo');
                 img.className = 'menu-card-img';
                 img.loading = 'lazy';
+                img.addEventListener('load', function () {
+                    img.classList.add('is-loaded');
+                    if (img.parentElement) img.parentElement.classList.remove('is-loading');
+                });
+                img.addEventListener('error', function () {
+                    img.classList.add('is-error');
+                    if (img.parentElement) {
+                        img.parentElement.classList.remove('is-loading');
+                        img.parentElement.classList.add('is-error');
+                    }
+                });
+                img.src = imgSrc;
             } else {
+                img = document.createElement('div');
                 img.className = 'menu-card-placeholder';
                 img.textContent = 'Velvet Plate';
             }
@@ -202,7 +225,7 @@
             body.appendChild(actionRow);
 
             var wrapper = document.createElement('div');
-            wrapper.className = 'menu-card-img-wrapper';
+            wrapper.className = 'menu-card-img-wrapper' + (hasImage ? ' is-loading' : '');
             wrapper.appendChild(img);
 
             card.appendChild(wrapper);
@@ -310,7 +333,13 @@
 
     if (orderType) {
         orderType.addEventListener('change', function () {
-            if (wrapTable) wrapTable.style.display = (orderType.value === 'DINE_IN') ? 'block' : 'none';
+            var isDineIn = orderType.value === 'DINE_IN';
+            if (wrapTable) wrapTable.style.display = isDineIn ? 'block' : 'none';
+            // When switching to DINE_IN, sync selectedTableInput from the visually selected button
+            if (isDineIn && selectedTableInput) {
+                var selectedBtn = document.querySelector('.table-btn.selected');
+                selectedTableInput.value = selectedBtn ? (selectedBtn.getAttribute('data-id') || '0') : '0';
+            }
             renderCart();
         });
     }
@@ -323,25 +352,37 @@
                 return;
             }
 
-            if (orderType.value === 'DINE_IN' && (!selectedTableInput || selectedTableInput.value === '0')) {
-                window.SRMS.toast('Please select a table for Dine-in', true);
-                return;
+            if (orderType.value === 'DINE_IN') {
+                // Sync hidden input from visually selected button (safety measure)
+                var selectedBtn = document.querySelector('.table-btn.selected');
+                var selectedId = selectedBtn ? (selectedBtn.getAttribute('data-id') || '0') : '0';
+                if (selectedTableInput) selectedTableInput.value = selectedId;
+
+                if (!selectedId || selectedId === '0') {
+                    window.SRMS.toast('Please select a table first', true);
+                    return;
+                }
             }
 
-            // Prepare Address Step fields
+            // Show/hide address field based on order type
             var wrapAddr = document.getElementById('wrapCheckoutAddr');
-            var locInfo = document.getElementById('detectedLocationInfo');
-            if (orderType.value === 'DELIVERY') {
-                wrapAddr.style.display = 'block';
+            var isDineIn = orderType.value === 'DINE_IN';
+            if (wrapAddr) wrapAddr.style.display = isDineIn ? 'none' : 'block';
+
+            if (!isDineIn) {
                 var savedLoc = localStorage.getItem('vp_address');
                 var savedPin = localStorage.getItem('vp_pincode');
+                var locInfo = document.getElementById('detectedLocationInfo');
                 if (savedLoc && savedPin) {
-                    document.getElementById('checkoutAddr').value = savedLoc + ' (' + savedPin + ')';
-                    locInfo.textContent = '📍 Delivering to your selected location: ' + savedPin;
+                    var addrEl = document.getElementById('checkoutAddr');
+                    if (addrEl) addrEl.value = savedLoc + ' (' + savedPin + ')';
+                    if (locInfo) locInfo.textContent = '\uD83D\uDCCD Delivering to: ' + savedPin;
                 }
-            } else {
-                wrapAddr.style.display = 'none';
             }
+
+            // Update modal title
+            var modalTitle = document.getElementById('checkoutModalTitle');
+            if (modalTitle) modalTitle.textContent = isDineIn ? 'Dine-in Details' : 'Delivery Details';
 
             checkoutModal.classList.add('is-active');
             showStep('Address');
@@ -349,32 +390,34 @@
     }
 
     document.getElementById('btnNextToPayment')?.addEventListener('click', () => {
-        var name = document.getElementById('checkoutName').value;
-        var phone = document.getElementById('checkoutPhone').value;
-        var addr = document.getElementById('checkoutAddr').value;
+        var name = (document.getElementById('checkoutName').value || '').trim();
+        var phone = (document.getElementById('checkoutPhone').value || '').trim();
+        var addr = (document.getElementById('checkoutAddr')?.value || '').trim();
 
         if (!name || !phone || (orderType.value === 'DELIVERY' && !addr)) {
-            window.SRMS.toast('Please fill in all details', true);
+            window.SRMS.toast('Please fill in all required details', true);
             return;
         }
         showStep('Payment');
     });
 
     document.getElementById('btnNextToConfirm')?.addEventListener('click', () => {
-        var name = document.getElementById('checkoutName').value;
-        var phone = document.getElementById('checkoutPhone').value;
-        var addr = document.getElementById('checkoutAddr').value;
+        var name = (document.getElementById('checkoutName')?.value || '').trim();
+        var phone = (document.getElementById('checkoutPhone')?.value || '').trim();
+        var addr = (document.getElementById('checkoutAddr')?.value || '').trim();
         var method = document.querySelector('input[name="paymentMethod"]:checked').value;
 
         document.getElementById('confirmSummaryName').textContent = 'Name: ' + name;
         document.getElementById('confirmSummaryPhone').textContent = 'Phone: ' + phone;
 
         var summaryAddr = document.getElementById('confirmSummaryAddr');
-        if (orderType.value === 'DELIVERY') {
-            summaryAddr.textContent = 'Address: ' + addr;
-            summaryAddr.style.display = 'block';
-        } else {
-            summaryAddr.style.display = 'none';
+        if (summaryAddr) {
+            if (orderType.value === 'DELIVERY') {
+                summaryAddr.textContent = 'Address: ' + addr;
+                summaryAddr.style.display = 'block';
+            } else {
+                summaryAddr.style.display = 'none';
+            }
         }
 
         if (method === 'UPI') {
@@ -394,14 +437,26 @@
 
         var lines = Object.keys(cart).map(k => ({ menu_item_id: Number(k), quantity: cart[k] }));
         var method = document.querySelector('input[name="paymentMethod"]:checked').value;
+        var isDineIn = orderType.value === 'DINE_IN';
+
+        // Get table_id from the visually selected button (source of truth)
+        var tableIdValue = 0;
+        if (isDineIn) {
+            var selBtn = document.querySelector('.table-btn.selected');
+            tableIdValue = selBtn ? Number(selBtn.getAttribute('data-id') || 0) : 0;
+            // Fallback to hidden input
+            if (!tableIdValue && selectedTableInput) {
+                tableIdValue = Number(selectedTableInput.value || 0);
+            }
+        }
 
         var payload = {
             type: orderType.value,
             cart: lines,
-            table_id: orderType.value === 'DINE_IN' ? Number(selectedTableInput.value) : null,
-            customer_name: document.getElementById('checkoutName').value,
-            customer_phone: document.getElementById('checkoutPhone').value,
-            delivery_address: orderType.value === 'DELIVERY' ? document.getElementById('checkoutAddr').value : '',
+            table_id: isDineIn ? tableIdValue : null,
+            customer_name: (document.getElementById('checkoutName').value || '').trim(),
+            customer_phone: (document.getElementById('checkoutPhone').value || '').trim(),
+            delivery_address: isDineIn ? null : (document.getElementById('checkoutAddr')?.value || '').trim(),
             payment_method: method
         };
 
@@ -414,9 +469,11 @@
                 renderCart();
                 renderGrid();
                 showStep('Success');
+            } else {
+                window.SRMS.toast(res.error || 'Order failed. Please try again.', true);
             }
         } catch (err) {
-            window.SRMS.toast(err.message, true);
+            window.SRMS.toast(err.message || 'Something went wrong. Please try again.', true);
         } finally {
             btn.disabled = false;
             btn.textContent = 'Confirm & Place Order';

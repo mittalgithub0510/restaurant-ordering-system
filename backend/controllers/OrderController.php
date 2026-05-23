@@ -84,18 +84,21 @@ final class OrderController
         if ($type === 'DINE_IN') {
             $tableId = isset($body['table_id']) ? (int) $body['table_id'] : 0;
             if ($tableId < 1) {
-                json_response(['success' => false, 'error' => 'Select a table'], 400);
+                json_response(['success' => false, 'error' => 'Select a table for dine-in'], 400);
             }
             $t = TableModel::find($tableId);
             if (!$t) {
                 json_response(['success' => false, 'error' => 'Invalid table'], 400);
             }
+            // Optionally capture customer details for dine-in
+            $customerName = sanitize_string($body['customer_name'] ?? '', 128) ?: null;
+            $phone = sanitize_string($body['customer_phone'] ?? '', 32) ?: null;
         } else {
             $customerName = sanitize_string($body['customer_name'] ?? '', 128);
             $phone = sanitize_string($body['customer_phone'] ?? '', 32);
             $address = sanitize_string($body['delivery_address'] ?? '', 500);
             if ($customerName === '' || $phone === '' || $address === '') {
-                json_response(['success' => false, 'error' => 'Name, phone, and address required for delivery'], 400);
+                json_response(['success' => false, 'error' => 'Name, phone, and address are required for delivery'], 400);
             }
         }
 

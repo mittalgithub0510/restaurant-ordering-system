@@ -104,14 +104,24 @@
             card.className = 'menu-card';
             var imgSrc = window.SRMS.resolveMenuImageUrl ? window.SRMS.resolveMenuImageUrl(it) : '';
             var wrap = document.createElement('div');
-            wrap.className = 'menu-card-img-wrapper';
+            var hasImage = !!imgSrc;
+            wrap.className = 'menu-card-img-wrapper' + (hasImage ? ' is-loading' : '');
             var visual;
-            if (imgSrc) {
+            if (hasImage) {
                 visual = document.createElement('img');
-                visual.src = imgSrc;
                 visual.alt = String(it.name || 'Dish');
                 visual.className = 'menu-card-img';
                 visual.loading = 'lazy';
+                visual.addEventListener('load', function () {
+                    visual.classList.add('is-loaded');
+                    wrap.classList.remove('is-loading');
+                });
+                visual.addEventListener('error', function () {
+                    visual.classList.add('is-error');
+                    wrap.classList.remove('is-loading');
+                    wrap.classList.add('is-error');
+                });
+                visual.src = imgSrc;
             } else {
                 visual = document.createElement('div');
                 visual.className = 'menu-card-placeholder';
@@ -308,7 +318,7 @@
     }
 
     function closeCheckout() {
-        checkoutModal.classList.remove('is-active');
+        if (checkoutModal) checkoutModal.classList.remove('is-active');
     }
 
     function showStep(s) {
@@ -370,8 +380,23 @@
             }
 
             if (orderType.value === 'DINE_IN' && (!tableId || tableId.value === '0')) {
-                window.SRMS.toast('Please select a table', true);
+                window.SRMS.toast('Please select a table for dine-in', true);
                 return;
+            }
+
+            // Adjust checkout modal for order type
+            var wrapCheckoutAddr = document.getElementById('wrapCheckoutAddr');
+            var stepTitle = document.getElementById('checkoutStepTitle');
+            var isDineIn = orderType.value === 'DINE_IN';
+            if (wrapCheckoutAddr) wrapCheckoutAddr.style.display = isDineIn ? 'none' : 'block';
+            if (stepTitle) stepTitle.textContent = isDineIn ? 'Customer Details' : 'Delivery Details';
+
+            // Pre-fill address from saved location for DELIVERY
+            var loc = localStorage.getItem('vp_address');
+            var pin = localStorage.getItem('vp_pincode');
+            if (!isDineIn && loc && pin && document.getElementById('checkoutAddr')) {
+                document.getElementById('checkoutAddr').value = loc + ' (' + pin + ')';
+                document.getElementById('detectedLocationInfo').textContent = '📍 Delivery to your selected location: ' + pin;
             }
 
             checkoutModal.classList.add('is-active');
@@ -380,22 +405,32 @@
     }
 
     document.getElementById('btnNextToPayment')?.addEventListener('click', () => {
-        if (!document.getElementById('checkoutName').value || !document.getElementById('checkoutPhone').value || !document.getElementById('checkoutAddr').value) {
-            window.SRMS.toast('Please fill all details', true);
+        var isDineIn = orderType && orderType.value === 'DINE_IN';
+        var name = document.getElementById('checkoutName').value.trim();
+        var phone = document.getElementById('checkoutPhone').value.trim();
+        var addr = document.getElementById('checkoutAddr').value.trim();
+        if (!name || !phone || (!isDineIn && !addr)) {
+            window.SRMS.toast('Please fill all required details', true);
             return;
         }
         showStep('Payment');
     });
 
     document.getElementById('btnNextToConfirm')?.addEventListener('click', () => {
-        var name = document.getElementById('checkoutName').value;
-        var phone = document.getElementById('checkoutPhone').value;
-        var addr = document.getElementById('checkoutAddr').value;
+        var name = document.getElementById('checkoutName').value.trim();
+        var phone = document.getElementById('checkoutPhone').value.trim();
+        var addr = document.getElementById('checkoutAddr').value.trim();
         var method = document.querySelector('input[name="paymentMethod"]:checked').value;
+        var isDineIn = orderType && orderType.value === 'DINE_IN';
 
         document.getElementById('confirmSummaryName').textContent = 'Name: ' + name;
         document.getElementById('confirmSummaryPhone').textContent = 'Phone: ' + phone;
-        document.getElementById('confirmSummaryAddr').textContent = 'Address: ' + addr;
+        var summaryAddr = document.getElementById('confirmSummaryAddr');
+        if (isDineIn) {
+            summaryAddr.textContent = 'Table: ' + (tableId ? tableId.options[tableId.selectedIndex].text.trim() : 'N/A');
+        } else {
+            summaryAddr.textContent = 'Address: ' + addr;
+        }
 
         if (method === 'UPI') {
             document.getElementById('upiQrSection').style.display = 'block';
@@ -414,14 +449,15 @@
 
         var lines = Object.keys(cart).map(k => ({ menu_item_id: Number(k), quantity: cart[k] }));
         var method = document.querySelector('input[name="paymentMethod"]:checked').value;
+        var isDineIn = orderType.value === 'DINE_IN';
 
         var payload = {
             type: orderType.value,
             cart: lines,
-            table_id: orderType.value === 'DINE_IN' ? Number(tableId.value) : null,
-            customer_name: document.getElementById('checkoutName').value,
-            customer_phone: document.getElementById('checkoutPhone').value,
-            delivery_address: document.getElementById('checkoutAddr').value,
+            table_id: isDineIn ? Number(tableId.value) : null,
+            customer_name: document.getElementById('checkoutName').value.trim(),
+            customer_phone: document.getElementById('checkoutPhone').value.trim(),
+            delivery_address: isDineIn ? null : document.getElementById('checkoutAddr').value.trim(),
             payment_method: method
         };
 
@@ -434,9 +470,11 @@
                 renderCart();
                 renderGrid();
                 showStep('Success');
+            } else {
+                window.SRMS.toast(res.error || 'Order failed. Please try again.', true);
             }
         } catch (err) {
-            window.SRMS.toast(err.message, true);
+            window.SRMS.toast(err.message || 'Something went wrong. Please try again.', true);
         } finally {
             btn.disabled = false;
             btn.textContent = 'Confirm Order';

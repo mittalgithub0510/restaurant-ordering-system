@@ -53,15 +53,19 @@ $menuPayload = array_map(static function (array $m): array {
                 </select>
             </div>
             <div class="form-group" id="wrapTable">
-                <label class="form-label" for="tableId">Table</label>
+                <label class="form-label" for="tableId">Table <span class="text-muted" style="font-size:0.8em;">(required for dine-in)</span></label>
                 <select class="form-select" id="tableId" aria-label="Table">
-                    <option value="0">Select Table (optional)</option>
+                    <option value="0">— Select a table —</option>
                     <?php foreach ($tables as $t): ?>
                         <option value="<?= (int) $t['id'] ?>" data-status="<?= e((string) $t['status']) ?>">
                             <?= e((string) $t['label']) ?> (<?= (int) $t['capacity'] ?> seats)
                         </option>
                     <?php endforeach; ?>
                 </select>
+            </div>
+
+            <div class="form-group" id="wrapDelivery" hidden>
+                <label class="form-label">Delivery address will be entered at checkout</label>
             </div>
 
             <div class="cart-lines" id="cartLines">
@@ -92,9 +96,9 @@ $menuPayload = array_map(static function (array $m): array {
             <button class="modal-close" id="closeCheckoutModal">&times;</button>
         </div>
         <div class="modal-body">
-            <!-- Step 1: Address -->
+            <!-- Step 1: Address / Customer Details -->
             <div id="stepAddress" class="checkout-step">
-                <h4 class="mb-1">Delivery Details</h4>
+                <h4 class="mb-1" id="checkoutStepTitle">Customer Details</h4>
                 <div class="form-group">
                     <label class="form-label">Full Name</label>
                     <input type="text" class="form-input" id="checkoutName" placeholder="Enter your name">
@@ -103,7 +107,7 @@ $menuPayload = array_map(static function (array $m): array {
                     <label class="form-label">Phone Number</label>
                     <input type="tel" class="form-input" id="checkoutPhone" placeholder="Enter phone number">
                 </div>
-                <div class="form-group">
+                <div id="wrapCheckoutAddr" class="form-group">
                     <label class="form-label">Delivery Address</label>
                     <textarea class="form-textarea" id="checkoutAddr" placeholder="Complete address..."></textarea>
                     <p class="text-muted" style="font-size:0.8rem; margin-top:0.5rem" id="detectedLocationInfo"></p>

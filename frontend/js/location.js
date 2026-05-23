@@ -32,24 +32,26 @@ const LocationSystem = (() => {
 
     const bindEvents = () => {
         elements.selector.addEventListener('click', openModal);
-        elements.closeModal.addEventListener('click', closeModal);
-        elements.detectBtn.addEventListener('click', detectLocation);
+        if (elements.closeModal) elements.closeModal.addEventListener('click', closeModal);
+        if (elements.detectBtn) elements.detectBtn.addEventListener('click', detectLocation);
         
         window.addEventListener('click', (e) => {
             if (e.target === elements.modal) closeModal();
         });
 
-        elements.searchInput.addEventListener('input', debounce(handleSearch, 300));
-        elements.searchBtn.addEventListener('click', () => handleSearch(true));
+        if (elements.searchInput) elements.searchInput.addEventListener('input', debounce(handleSearch, 300));
+        if (elements.searchBtn) elements.searchBtn.addEventListener('click', () => handleSearch(true));
     };
 
     const openModal = () => {
+        if (!elements.modal) return;
         elements.modal.classList.add('is-active');
         document.body.style.overflow = 'hidden';
         renderAddresses();
     };
 
     const closeModal = () => {
+        if (!elements.modal) return;
         elements.modal.classList.remove('is-active');
         document.body.style.overflow = '';
     };
@@ -76,25 +78,24 @@ const LocationSystem = (() => {
         if (!elements.addressList) return;
 
         if (addresses.length === 0) {
-            elements.addressList.innerHTML = 
-                <div class="empty-state">
+            elements.addressList.innerHTML =
+                `<div class="empty-state">
                     <p>No saved addresses yet.</p>
-                </div>
-            ;
+                </div>`;
             return;
         }
 
-        elements.addressList.innerHTML = addresses.map(addr => 
-            <div class="address-card ${addr.pincode === currentPincode ? 'is-active' : ''}" onclick="LocationSystem.selectAddress(${JSON.stringify(addr).replace(/"/g, '&quot;')})">
+        elements.addressList.innerHTML = addresses.map(addr =>
+            `<div class="address-card ${addr.pincode === currentPincode ? 'is-active' : ''}" onclick="LocationSystem.selectAddress(${JSON.stringify(addr).replace(/"/g, '&quot;')})">
                 <div class="address-icon">
                     ${getIconForType(addr.address_type)}
                 </div>
                 <div class="address-details">
                     <span class="address-label">${addr.address_type}</span>
-                    <p class="address-text">${addr.flat_number ? addr.flat_number + ', ' : ''}$</p>
-                    <p class="address-meta">${addr.city}, </p>
+                    <p class="address-text">${addr.flat_number ? addr.flat_number + ', ' : ''}${addr.street_address || ''}</p>
+                    <p class="address-meta">${addr.city || ''}, ${addr.pincode || ''}</p>
                 </div>
-            </div>
+            </div>`
         ).join('');
     };
 
@@ -118,7 +119,7 @@ const LocationSystem = (() => {
         navigator.geolocation.getCurrentPosition(async (pos) => {
             try {
                 const { latitude, longitude } = pos.coords;
-                const res = await SRMS.api.get(/api/location-geocode?lat=${latitude}&lng=${longitude});
+                const res = await SRMS.api.get(`/api/location-geocode?lat=${latitude}&lng=${longitude}`);
                 if (res.success) {
                     selectLocation(res.data.pincode, res.data.area || res.data.city);
                 }
@@ -148,17 +149,16 @@ const LocationSystem = (() => {
         }
 
         // Mock suggestions
-        elements.searchSuggestions.innerHTML = 
-            <div class="suggestion-item" onclick="LocationSystem.selectLocation('110001', '${query}')">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></circle><circle cx="12" cy="10" r="3"></circle></svg>
+        elements.searchSuggestions.innerHTML =
+            `<div class="suggestion-item" onclick="LocationSystem.selectLocation('110001', '${query}')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
                 <span>${query} (Detected Area)</span>
-            </div>
-        ;
+            </div>`;
     };
 
     const checkServiceability = async (pincode, label) => {
         try {
-            const res = await SRMS.api.get(/api/location-check?pincode=${pincode});
+            const res = await SRMS.api.get(`/api/location-check?pincode=${pincode}`);
             if (res.success) {
                 if (res.available) {
                     selectLocation(pincode, label, res.data);
@@ -206,4 +206,5 @@ const LocationSystem = (() => {
     };
 })();
 
+window.LocationSystem = LocationSystem;
 document.addEventListener('DOMContentLoaded', LocationSystem.init);

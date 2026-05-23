@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Models\Database;
 use PDO;
 
 class LocationController
@@ -11,9 +12,7 @@ class LocationController
 
     public function __construct()
     {
-        $db = require __DIR__ . '/../config/database.php';
-        $this->pdo = new PDO("mysql:host={$db['host']};port={$db['port']};dbname={$db['database']}", $db['username'], $db['password']);
-        $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $this->pdo = Database::pdo();
     }
 
     /**
@@ -90,8 +89,7 @@ class LocationController
             json_response(['success' => false, 'error' => 'Pincode required'], 400);
         }
 
-        // Simple wildcard search or JSON search for pincode in zones
-        $stmt = $this->pdo->prepare("SELECT * FROM location_zones WHERE is_active = 1 AND FIND_IN_SET(?, pincodes)");
+        $stmt = $this->pdo->prepare("SELECT * FROM location_zones WHERE is_active = 1 AND FIND_IN_SET(?, REPLACE(pincodes, ' ', ''))");
         $stmt->execute([$pincode]);
         $zone = $stmt->fetch(PDO::FETCH_ASSOC);
 

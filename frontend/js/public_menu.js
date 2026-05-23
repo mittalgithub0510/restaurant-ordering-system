@@ -127,6 +127,7 @@
             var qty = cart[id] || 0;
             var card = document.createElement('article');
             card.className = 'menu-card';
+            card.dataset.id = id;
             var imgSrc = window.SRMS.resolveMenuImageUrl ? window.SRMS.resolveMenuImageUrl(it) : '';
             var img;
             var hasImage = !!imgSrc;
@@ -155,13 +156,7 @@
             var body = document.createElement('div');
             body.className = 'menu-card-body';
 
-            var tagStr =
-                id % 3 === 0
-                    ? '<span class="menu-card-ribbon" aria-hidden="true">Chef’s pick</span>'
-                    : '';
-
             body.innerHTML =
-                tagStr +
                 '<h3 class="menu-card-title">' +
                 escapeHtml(String(it.name)) +
                 '</h3>' +
@@ -179,53 +174,39 @@
 
             var price = document.createElement('p');
             price.className = 'menu-card-price';
-            price.style.fontSize = '1.35rem';
-            price.style.margin = '10px 0';
+            // We removed inline styles so main.css controls the size responsively
+            price.style.margin = '0';
             price.textContent = formatMoney(Number(it.price));
 
             var actionRow = document.createElement('div');
-            if (qty > 0) {
-                var qtyRow = document.createElement('div');
-                qtyRow.className = 'qty-row';
-                qtyRow.style.width = '100%';
-                var minus = document.createElement('button');
-                minus.type = 'button';
-                minus.className = 'qty-btn';
-                minus.textContent = '−';
-                var val = document.createElement('span');
-                val.className = 'qty-val';
-                val.textContent = String(qty);
-                var plus = document.createElement('button');
-                plus.type = 'button';
-                plus.className = 'qty-btn';
-                plus.textContent = '+';
-                minus.addEventListener('click', function () {
-                    setQty(id, (cart[id] || 0) - 1);
-                });
-                plus.addEventListener('click', function () {
-                    setQty(id, (cart[id] || 0) + 1);
-                });
-                qtyRow.appendChild(minus);
-                qtyRow.appendChild(val);
-                qtyRow.appendChild(plus);
-                actionRow.appendChild(qtyRow);
-            } else {
-                var btnAdd = document.createElement('button');
-                btnAdd.type = 'button';
-                btnAdd.className = 'btn btn-outline btn-block';
-                btnAdd.textContent = 'Add to order';
-                btnAdd.addEventListener('click', function () {
-                    setQty(id, 1);
-                    if (window.SRMS.toast) window.SRMS.toast('Added to your tray — adjust quantity here anytime.');
-                });
-                actionRow.appendChild(btnAdd);
-            }
+            actionRow.className = 'action-row';
+            renderActionRowInner(actionRow, id, qty);
 
-            body.appendChild(price);
-            body.appendChild(actionRow);
+            var bottomRow = document.createElement('div');
+            bottomRow.style.display = 'flex';
+            bottomRow.style.flexWrap = 'wrap';
+            bottomRow.style.gap = '0.5rem';
+            bottomRow.style.justifyContent = 'space-between';
+            bottomRow.style.alignItems = 'center';
+            bottomRow.style.marginTop = 'auto'; // Push to bottom of card
+            bottomRow.style.paddingTop = '0.5rem';
+
+            bottomRow.appendChild(price);
+            bottomRow.appendChild(actionRow);
+
+            body.appendChild(bottomRow);
 
             var wrapper = document.createElement('div');
             wrapper.className = 'menu-card-img-wrapper' + (hasImage ? ' is-loading' : '');
+            
+            if (id % 3 === 0) {
+                var ribbon = document.createElement('span');
+                ribbon.className = 'menu-card-ribbon';
+                ribbon.setAttribute('aria-hidden', 'true');
+                ribbon.textContent = 'Chef’s pick';
+                wrapper.appendChild(ribbon);
+            }
+            
             wrapper.appendChild(img);
 
             card.appendChild(wrapper);
@@ -242,10 +223,58 @@
         return '₹' + n.toFixed(2);
     }
 
+    function renderActionRowInner(actionRow, id, qty) {
+        actionRow.innerHTML = '';
+        if (qty > 0) {
+            var qtyRow = document.createElement('div');
+            qtyRow.className = 'qty-row';
+            var minus = document.createElement('button');
+            minus.type = 'button';
+            minus.className = 'qty-btn';
+            minus.textContent = '−';
+            var val = document.createElement('span');
+            val.className = 'qty-val';
+            val.textContent = String(qty);
+            var plus = document.createElement('button');
+            plus.type = 'button';
+            plus.className = 'qty-btn';
+            plus.textContent = '+';
+            minus.addEventListener('click', function () {
+                setQty(id, (cart[id] || 0) - 1);
+            });
+            plus.addEventListener('click', function () {
+                setQty(id, (cart[id] || 0) + 1);
+            });
+            qtyRow.appendChild(minus);
+            qtyRow.appendChild(val);
+            qtyRow.appendChild(plus);
+            actionRow.appendChild(qtyRow);
+        } else {
+            var btnAdd = document.createElement('button');
+            btnAdd.type = 'button';
+            btnAdd.className = 'btn btn-outline btn-sm';
+            btnAdd.style.padding = '0.35rem 0.75rem';
+            btnAdd.textContent = 'Add';
+            btnAdd.addEventListener('click', function () {
+                setQty(id, 1);
+                if (window.SRMS.toast) window.SRMS.toast('Added to your tray — adjust quantity here anytime.');
+            });
+            actionRow.appendChild(btnAdd);
+        }
+    }
+
+    function updateCardQty(id, qty) {
+        var card = document.querySelector('.menu-card[data-id="' + id + '"]');
+        if (!card) return;
+        var actionRow = card.querySelector('.action-row');
+        if (!actionRow) return;
+        renderActionRowInner(actionRow, id, qty);
+    }
+
     function setQty(menuId, q) {
         if (q <= 0) delete cart[menuId];
         else cart[menuId] = q;
-        renderGrid();
+        updateCardQty(menuId, q <= 0 ? 0 : q);
         renderCart();
     }
 

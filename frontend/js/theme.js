@@ -1,6 +1,6 @@
 (function () {
     'use strict';
-    var STORAGE_KEY = 'srms-theme';
+    var STORAGE_KEY = 'theme';
     var root = document.documentElement;
 
     function getStored() {

@@ -69,8 +69,8 @@ if (empty($minimalLayout)): ?>
     </div>
     <div id="toastHost" class="toast-host" aria-live="polite" aria-atomic="true"></div>
     <script>window.SRMS = window.SRMS || {}; window.SRMS.baseUrl = '<?= e(rtrim(base_url(''), '/')) ?>'; window.SRMS.pollMs = <?= (int) app_config('order_poll_seconds', 5) * 1000 ?>; window.SRMS.gstRate = <?= json_encode((float) app_config('gst_default_rate', 18), JSON_THROW_ON_ERROR) ?>;</script>
-    <script src="<?= e(asset_url('js/location.js?v=' . filemtime(__DIR__ . '/../js/location.js'))) ?>"></script>
     <script src="<?= e(asset_url('js/srms-api.js?v=' . filemtime(__DIR__ . '/../js/srms-api.js'))) ?>"></script>
+    <script src="<?= e(asset_url('js/location.js?v=' . filemtime(__DIR__ . '/../js/location.js'))) ?>"></script>
     <script src="<?= e(asset_url('js/nav.js?v=' . filemtime(__DIR__ . '/../js/nav.js'))) ?>"></script>
     <?php if (!empty($extraScripts)):
         foreach ($extraScripts as $src): ?>

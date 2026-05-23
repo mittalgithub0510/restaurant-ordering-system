@@ -48,11 +48,12 @@ require dirname(__DIR__) . '/partials/app_shell_start.php';
         <div class="vp-featured-grid">
             <?php foreach ($featured as $item): ?>
                 <article class="vp-dish-card">
-                    <div class="vp-dish-media">
-                        <?php
-                        $featImg = !empty($item['image_path']) ? menu_item_image_url($item['image_path']) : null;
-                        if ($featImg): ?>
-                            <img src="<?= e($featImg) ?>" alt="<?= e($item['name']) ?>" loading="lazy" width="640" height="480">
+                    <?php $featImg = !empty($item['image_path']) ? menu_item_image_url($item['image_path']) : null; ?>
+                    <div class="vp-dish-media<?= $featImg ? ' is-loading' : '' ?>">
+                        <?php if ($featImg): ?>
+                            <img src="<?= e($featImg) ?>" alt="<?= e($item['name']) ?>" loading="lazy" width="640" height="480"
+                                 onload="this.classList.add('is-loaded'); this.parentElement.classList.remove('is-loading');"
+                                 onerror="this.classList.add('is-error'); this.parentElement.classList.remove('is-loading'); this.parentElement.classList.add('is-error');">
                         <?php else: ?>
                             <div class="menu-card-placeholder">Velvet Plate</div>
                         <?php endif; ?>
